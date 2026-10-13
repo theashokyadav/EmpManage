@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.empmanage.domain.model.Department
@@ -60,7 +61,7 @@ fun EmployeeFormScreen(
     viewModel: EmployeeFormViewModel = koinViewModel()
 ) {
     LaunchedEffect(employeeId) {
-        if (employeeId != null) viewModel.loadForEdit(employeeId)
+        if (employeeId != null) viewModel.loadForEdit(employeeId) else viewModel.resetForNewEntry()
     }
 
     val state by viewModel.uiState.collectAsState()
@@ -134,7 +135,10 @@ fun EmployeeFormScreen(
                 label = "Email",
                 error = state.email.error,
                 touched = state.email.touched,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    capitalization = KeyboardCapitalization.None
+                )
             )
 
             ValidatedTextField(

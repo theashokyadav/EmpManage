@@ -70,6 +70,19 @@ class EmployeeFormViewModel(
         }
     }
 
+    /**
+     * Without Jetpack Navigation's per-destination ViewModelStore, this
+     * manual sealed-class navigation reuses the same Activity-scoped
+     * EmployeeFormViewModel instance every time the Form screen is shown —
+     * confirmed via a real device run: opening "Add", cancelling, then
+     * opening "Add" again left the previous attempt's half-filled fields
+     * in place. Called from EmployeeFormScreen whenever employeeId is null.
+     */
+    fun resetForNewEntry() {
+        originalEmployee = null
+        _uiState.value = EmployeeFormUiState()
+    }
+
     fun onProfileImageSelected(filePath: String) {
         _uiState.update { it.copy(profileImagePath = filePath) }
     }

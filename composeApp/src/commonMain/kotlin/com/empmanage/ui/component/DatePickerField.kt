@@ -1,6 +1,8 @@
 package com.empmanage.ui.component
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,7 +12,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,19 +39,30 @@ fun DatePickerField(
     var showDialog by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = selectedMillis?.let(DateFormatter::formatDate) ?: "",
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            trailingIcon = {
-                IconButton(onClick = { showDialog = true }) {
+        Box {
+            OutlinedTextField(
+                value = selectedMillis?.let(DateFormatter::formatDate) ?: "",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(label) },
+                trailingIcon = {
                     Icon(Icons.Default.DateRange, contentDescription = "Pick date")
-                }
-            },
-            isError = touched && error != null,
-            modifier = Modifier.fillMaxWidth().clickable { showDialog = true }
-        )
+                },
+                isError = touched && error != null,
+                modifier = Modifier.fillMaxWidth()
+            )
+            // A readOnly OutlinedTextField still consumes taps itself (for focus/cursor
+            // placement), so a Modifier.clickable on the field never actually fires —
+            // confirmed on a real device: tapping the field body did nothing, only the
+            // trailing icon opened the dialog. This transparent overlay, drawn on top,
+            // intercepts the whole tap area instead.
+            Box(
+                modifier = Modifier.matchParentSize().clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { showDialog = true }
+            )
+        }
         if (touched && error != null) {
             Text(
                 text = error,

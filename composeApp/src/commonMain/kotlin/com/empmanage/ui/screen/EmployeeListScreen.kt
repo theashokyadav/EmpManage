@@ -1,5 +1,8 @@
 package com.empmanage.ui.screen
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,7 +64,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 private const val UNDO_WINDOW_MILLIS = 5000L
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun EmployeeListScreen(
     onAddEmployee: () -> Unit,
@@ -69,6 +72,8 @@ fun EmployeeListScreen(
     onViewDetails: (Long) -> Unit,
     isDarkTheme: Boolean,
     onToggleDarkTheme: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     viewModel: EmployeeListViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -236,7 +241,9 @@ fun EmployeeListScreen(
                                 onEdit = { onEditEmployee(employee.id) },
                                 onDelete = { employeeToDelete = employee },
                                 onViewDetails = { onViewDetails(employee.id) },
-                                modifier = Modifier.padding(vertical = 4.dp)
+                                modifier = Modifier.padding(vertical = 4.dp).animateItem(),
+                                sharedTransitionScope = sharedTransitionScope,
+                                animatedVisibilityScope = animatedVisibilityScope
                             )
                         }
                         if (state.hasMore) {

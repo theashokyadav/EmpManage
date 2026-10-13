@@ -1,5 +1,8 @@
 package com.empmanage.ui.screen
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,12 +33,14 @@ import com.empmanage.ui.util.CurrencyFormatter
 import com.empmanage.ui.util.DateFormatter
 import org.koin.compose.viewmodel.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun EmployeeDetailScreen(
     employeeId: Long,
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     viewModel: EmployeeDetailViewModel = koinViewModel()
 ) {
     LaunchedEffect(employeeId) { viewModel.load(employeeId) }
@@ -70,7 +75,21 @@ fun EmployeeDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ProfileAvatar(imagePath = current.profileImagePath, initials = current.initials, onClick = {})
+            var avatarModifier: Modifier = Modifier
+            if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                with(sharedTransitionScope) {
+                    avatarModifier = avatarModifier.sharedElement(
+                        rememberSharedContentState(key = "avatar-$employeeId"),
+                        animatedVisibilityScope = animatedVisibilityScope
+                    )
+                }
+            }
+            ProfileAvatar(
+                imagePath = current.profileImagePath,
+                initials = current.initials,
+                onClick = {},
+                avatarModifier = avatarModifier
+            )
 
             DetailRow("Full Name", current.fullName)
             DetailRow("Email", current.email)

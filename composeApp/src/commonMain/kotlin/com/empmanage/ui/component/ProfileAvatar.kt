@@ -33,14 +33,15 @@ fun ProfileAvatar(
     imagePath: String?,
     initials: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    avatarModifier: Modifier = Modifier
 ) {
     val bitmap: ImageBitmap? = remember(imagePath) { imagePath?.let(::decodeImageFile) }
 
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(contentAlignment = Alignment.BottomEnd) {
             Box(
-                modifier = Modifier
+                modifier = avatarModifier
                     .size(80.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primaryContainer)

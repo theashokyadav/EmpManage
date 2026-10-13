@@ -1,5 +1,8 @@
 package com.empmanage
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -18,6 +21,7 @@ import com.empmanage.ui.screen.EmployeeListScreen
 import com.empmanage.ui.theme.EmpManageTheme
 import org.koin.compose.viewmodel.koinViewModel
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun App() {
     val themeViewModel: ThemeViewModel = koinViewModel()
@@ -28,26 +32,37 @@ fun App() {
         Surface(modifier = Modifier.fillMaxSize()) {
             var screen by remember { mutableStateOf<Screen>(Screen.List) }
 
-            when (val current = screen) {
-                is Screen.List -> EmployeeListScreen(
-                    onAddEmployee = { screen = Screen.Form() },
-                    onEditEmployee = { id -> screen = Screen.Form(id) },
-                    onViewDetails = { id -> screen = Screen.Detail(id) },
-                    isDarkTheme = isDarkTheme,
-                    onToggleDarkTheme = { themeViewModel.setDarkModeOverride(!isDarkTheme) }
-                )
+            // Shared element transition (bonus #5) between the list card's avatar
+            // and the detail screen's avatar: both screens sit inside the same
+            // AnimatedContent so Modifier.sharedElement can animate between them.
+            SharedTransitionLayout {
+                AnimatedContent(targetState = screen, label = "screen-nav") { target ->
+                    when (target) {
+                        is Screen.List -> EmployeeListScreen(
+                            onAddEmployee = { screen = Screen.Form() },
+                            onEditEmployee = { id -> screen = Screen.Form(id) },
+                            onViewDetails = { id -> screen = Screen.Detail(id) },
+                            isDarkTheme = isDarkTheme,
+                            onToggleDarkTheme = { themeViewModel.setDarkModeOverride(!isDarkTheme) },
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            animatedVisibilityScope = this@AnimatedContent
+                        )
 
-                is Screen.Form -> EmployeeFormScreen(
-                    employeeId = current.employeeId,
-                    onSaved = { screen = Screen.List },
-                    onCancel = { screen = Screen.List }
-                )
+                        is Screen.Form -> EmployeeFormScreen(
+                            employeeId = target.employeeId,
+                            onSaved = { screen = Screen.List },
+                            onCancel = { screen = Screen.List }
+                        )
 
-                is Screen.Detail -> EmployeeDetailScreen(
-                    employeeId = current.employeeId,
-                    onBack = { screen = Screen.List },
-                    onEdit = { id -> screen = Screen.Form(id) }
-                )
+                        is Screen.Detail -> EmployeeDetailScreen(
+                            employeeId = target.employeeId,
+                            onBack = { screen = Screen.List },
+                            onEdit = { id -> screen = Screen.Form(id) },
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            animatedVisibilityScope = this@AnimatedContent
+                        )
+                    }
+                }
             }
         }
     }

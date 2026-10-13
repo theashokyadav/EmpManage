@@ -35,7 +35,13 @@ interface EmployeeDao {
     @Query("SELECT fullName FROM employees")
     suspend fun getAllFullNames(): List<String>
 
-    /** Cursor-ready page fetch, used by the Phase 8 pagination bonus. */
+    /**
+     * Cursor-ready page fetch. Not currently called — the list screen pages
+     * the already filtered/sorted in-memory list instead (see
+     * EmployeeListViewModel) since search/filter already scan it fully via
+     * combine(). Kept as the seam for a future DB-level pagination path if
+     * the dataset ever grows large enough to need one.
+     */
     @Query("SELECT * FROM employees ORDER BY createdAt DESC LIMIT :limit OFFSET :offset")
     suspend fun getPage(limit: Int, offset: Int): List<EmployeeEntity>
 }

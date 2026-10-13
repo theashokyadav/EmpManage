@@ -1,10 +1,39 @@
 # EmpManage
 
 A Kotlin Multiplatform Mobile (KMM) employee management app built with Compose
-Multiplatform for Android and iOS: profile CRUD, camera/gallery/document
-integration, local persistence via Room KMP, and search/filter/sort backed by
-documented-complexity data structures (HashSet duplicate index, min-heap top-N,
-undo stack).
+Multiplatform for Android and iOS: a validated employee form, camera/gallery/
+document integration, local persistence via Room KMP, and a searchable/
+filterable/sortable employee list backed by documented-complexity data
+structures (HashSet duplicate index, a hand-rolled min-heap for top-N salary,
+an ArrayDeque undo stack, and a prefix trie for name search).
+
+## Status
+
+All core sections (1–6) from the spec are implemented and verified against
+real Android builds, plus every bonus item: unit tests (53, well past the
+15-test bar), Koin DI, dark mode, pagination, and animations/shared-element
+transitions. iOS sources are written throughout but unverified — there's no
+Xcode toolchain in this dev environment; see [iOS status](#ios-status) below.
+
+## Features
+
+- **Employee Form** — all spec'd fields (name, email, phone, address, gender,
+  department, skills, employment type, active switch, joining date, salary)
+  with real-time validation, errors shown on blur, Submit gated on full
+  validity, and inline duplicate-detection errors on Email/Phone/Full Name.
+- **Profile photo & resume** — camera/gallery bottom sheet with Android
+  runtime permissions, images stored as local file paths; resume upload
+  (PDF/DOC/DOCX) with a 5 MB size limit enforced via a snackbar.
+- **Employee list** — always-visible search (name/email/department, with
+  match highlighting), a filter bottom sheet (department/status/employment
+  type, AND-composed, with an active-filter-count badge), a sort menu
+  (name/joining date/salary, both directions), and pagination in pages of 20.
+- **Card interactions** — long-press context menu (Edit/Delete/View Details),
+  delete confirmation dialog, and a 5-second undo-delete snackbar.
+- **Top Earners tab** — the top N highest-paid employees via a min-heap,
+  with a stepper to change N (1–10) reactively.
+- **Dark mode** — follows the system setting by default; a toggle persists an
+  explicit override in a cross-platform DataStore.
 
 ## Architecture
 
@@ -13,26 +42,55 @@ dependency on `data` or `presentation`:
 
 ```
 composeApp/src/commonMain/kotlin/com/empmanage/
- ├─ domain/         model, repository interfaces, use cases, DSA utilities
- ├─ data/           Room entities/DAO, mappers, repository implementations
- ├─ presentation/   ViewModels, UI state, navigation
- ├─ ui/             Compose screens and components
- ├─ platform/       expect declarations (camera, gallery, file picker, permissions)
- └─ di/             Koin modules
+ ├─ domain/
+ │   ├─ model/        Employee, Gender/Department/EmploymentType/Skill enums
+ │   ├─ repository/   EmployeeRepository, ThemePreferenceRepository (interfaces)
+ │   ├─ usecase/      Add/Update/Delete/UndoDelete/GetEmployees, TopNSalaryUseCase
+ │   └─ util/         FormValidators, PhoneNormalizer, DuplicateIndex, NameIndex,
+ │                     MinHeap, UndoStack, NameTrie — each with a KDoc complexity note
+ ├─ data/
+ │   ├─ local/db/      Room entity/DAO/database (expect/actual RoomDatabaseConstructor)
+ │   ├─ local/mapper/  Entity <-> domain model mapping
+ │   ├─ local/datastore/ Cross-platform DataStore<Preferences> (Okio-backed)
+ │   └─ repository/    EmployeeRepositoryImpl, ThemePreferenceRepositoryImpl
+ ├─ presentation/
+ │   ├─ viewmodel/     EmployeeForm/List/Detail/TopEarners/ThemeViewModel
+ │   ├─ state/         Immutable UI state classes (FieldState<T>, FilterState, ...)
+ │   └─ navigation/    Screen (sealed class: List/Form/Detail)
+ ├─ ui/                Compose screens + reusable components
+ ├─ platform/          expect declarations: camera/gallery/document pickers,
+ │                     image decoding, DB builder, DataStore path, clock
+ └─ di/                Koin modules (domain/data/viewModel)
 
-composeApp/src/androidMain/   Android actuals (camera/picker/permissions), Koin android module
-composeApp/src/iosMain/       iOS actuals, Koin iOS module
+composeApp/src/androidMain/   Android actuals (verified against real builds)
+composeApp/src/iosMain/       iOS actuals (written, unverified — see below)
 ```
 
-Full implementation plan, tech stack rationale, and phase breakdown live in the
-project's planning document (see conversation history / shared doc link).
+Every DAO call runs on `Dispatchers.IO`; every list transformation (search,
+filter, sort, pagination) happens in `EmployeeListViewModel` via `combine()`
+on top of `GetEmployeesUseCase()`'s `Flow` — Composables only render the
+resulting `EmployeeListUiState`.
+
+### Why pagination is client-side, not a DB cursor
+
+The list screen's search/filter/sort already scans the full in-memory
+employee list reactively via `combine()` (simple substring search across
+three columns, AND-composed filters). Re-deriving that same logic as SQL
+`WHERE`/`LIMIT`/`OFFSET` would either duplicate it or require abandoning the
+reactive pipeline for a request-driven one. Instead, `EmployeeListViewModel`
+pages the already-filtered/sorted list in windows of 20 (`visibleCountState`),
+resetting to one page whenever search/filter/sort changes. `EmployeeDao` does
+still expose a cursor-ready `getPage(limit, offset)` query for a future
+DB-level pagination path if the dataset ever grows large enough to need one.
 
 ## Tech stack
 
-- Kotlin Multiplatform + Compose Multiplatform
-- Room KMP (KSP) for local persistence
-- Koin for dependency injection
-- Kotlin Coroutines + StateFlow, `combine()` for reactive list search/filter/sort
+- Kotlin Multiplatform 2.1 + Compose Multiplatform 1.7
+- Room KMP 2.7 (KSP) — the `RoomDatabaseConstructor` expect/actual pattern,
+  confirmed working against a real Android KSP run
+- Koin 4 (including `koin-compose-viewmodel`)
+- Kotlin Coroutines + StateFlow/Flow (`combine`, `debounce`, `stateIn`)
+- kotlinx-datetime (date formatting) and DataStore + Okio (theme persistence)
 
 ## Building
 
@@ -40,12 +98,27 @@ Android (works on any machine with the Android SDK):
 
 ```
 ./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:testDebugUnitTest
 ```
 
-iOS: `iosMain` sources compile as part of the KMP module, but linking a runnable
-iOS app requires Xcode on macOS — see `iosApp/README.md`.
+### iOS status
 
-## Status
+`iosMain` actuals exist for every platform integration point (camera/
+gallery/document pickers, image decoding, the Room database builder, the
+DataStore path, the KMP clock) and compile as part of the shared module's
+Kotlin/Native metadata compilation. They are **not** compiled into a running
+iOS binary or verified on-device, because this dev environment has no Mac/
+Xcode toolchain. `iosApp/README.md` has the steps to finish wiring an Xcode
+project once that access exists — the Swift entry point sources
+(`iOSApp.swift`, `ContentView.swift`) are already written and ready to drop
+in.
 
-Phase 0 (project scaffolding) complete. See the planning document for the full
-phase breakdown and current progress.
+## Testing
+
+53 unit tests in `commonTest`, covering the DSA core (duplicate detection,
+min-heap top-N, undo stack, name trie), phone normalization, every form
+field validator, and small UI-adjacent helpers (ordinal formatting):
+
+```
+./gradlew :composeApp:testDebugUnitTest
+```

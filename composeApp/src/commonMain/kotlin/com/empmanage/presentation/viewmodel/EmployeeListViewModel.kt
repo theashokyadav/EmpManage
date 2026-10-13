@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val PAGE_SIZE = 20
+
 /**
  * Owns every list transformation (search, filter, sort) so the Composable
  * only ever renders [uiState] as-is. [combine] reactively recomputes the
@@ -56,12 +58,22 @@ class EmployeeListViewModel(
     private val searchQueryState = MutableStateFlow("")
     private val filterState = MutableStateFlow(FilterState())
     private val sortOptionState = MutableStateFlow(SortOption.NAME_ASC)
+    private val visibleCountState = MutableStateFlow(PAGE_SIZE)
 
     private val _undoEvents = Channel<Unit>(Channel.BUFFERED)
     val undoEvents: Flow<Unit> = _undoEvents.receiveAsFlow()
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     private val debouncedQuery = searchQueryState.debounce(300).distinctUntilChanged()
+
+    init {
+        // A fresh search/filter/sort makes the previous page count meaningless —
+        // start back at one page so pagination doesn't show a stale "has more".
+        viewModelScope.launch {
+            combine(debouncedQuery, filterState, sortOptionState) { _, _, _ -> Unit }
+                .collect { visibleCountState.value = PAGE_SIZE }
+        }
+    }
 
     private val filteredAndSorted: Flow<List<Employee>> = combine(
         getEmployeesUseCase(),
@@ -76,16 +88,24 @@ class EmployeeListViewModel(
         filteredAndSorted,
         searchQueryState,
         filterState,
-        sortOptionState
-    ) { employees, rawQuery, filters, sort ->
+        sortOptionState,
+        visibleCountState
+    ) { employees, rawQuery, filters, sort, visibleCount ->
         EmployeeListUiState(
             searchQuery = rawQuery,
-            employees = employees,
+            employees = employees.take(visibleCount),
+            totalMatchCount = employees.size,
+            hasMore = employees.size > visibleCount,
             isLoading = false,
             filters = filters,
             sortOption = sort
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), EmployeeListUiState())
+
+    /** Loads the next page of 20 (bonus #4) by widening the visible window over the already filtered/sorted list. */
+    fun onLoadMore() {
+        visibleCountState.update { it + PAGE_SIZE }
+    }
 
     fun onSearchQueryChanged(query: String) {
         searchQueryState.value = query

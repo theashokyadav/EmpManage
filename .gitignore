@@ -19,3 +19,6 @@ iosApp/*.xcworkspace
 # Compose Resources / Kotlin Native
 kotlin-js-store/
 .kotlin/
+
+# Scratch screenshots from manual emulator testing sessions
+/.manual-test-screens/

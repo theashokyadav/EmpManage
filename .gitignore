@@ -1,0 +1,21 @@
+*.iml
+.gradle
+.idea
+.DS_Store
+build/
+captures/
+.externalNativeBuild
+.cxx
+local.properties
+/composeApp/schemas/
+
+# Xcode / iOS
+iosApp/iosApp.xcodeproj/xcuserdata/
+iosApp/iosApp.xcworkspace/xcuserdata/
+iosApp/Pods/
+iosApp/*.xcworkspace
+!iosApp/iosApp.xcworkspace
+
+# Compose Resources / Kotlin Native
+kotlin-js-store/
+.kotlin/

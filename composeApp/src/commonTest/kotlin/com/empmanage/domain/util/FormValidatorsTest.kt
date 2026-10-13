@@ -100,4 +100,15 @@ class FormValidatorsTest {
         val now = 1_000_000L
         assertTrue(FormValidators.validateJoiningDate(now, now).isValid)
     }
+
+    @Test
+    fun resumeOverFiveMegabytesIsRejected() {
+        val oversized = FormValidators.MAX_RESUME_SIZE_BYTES + 1
+        assertTrue(FormValidators.validateResumeSize(oversized) is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun resumeAtOrUnderFiveMegabytesPasses() {
+        assertTrue(FormValidators.validateResumeSize(FormValidators.MAX_RESUME_SIZE_BYTES).isValid)
+    }
 }

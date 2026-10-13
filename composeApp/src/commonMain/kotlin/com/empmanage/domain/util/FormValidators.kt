@@ -16,6 +16,7 @@ import com.empmanage.domain.util.ValidationResult.Valid
 object FormValidators {
 
     private val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+    const val MAX_RESUME_SIZE_BYTES: Long = 5L * 1024 * 1024
 
     /**
      * [isDuplicate] is supplied by the caller (typically backed by a
@@ -77,4 +78,7 @@ object FormValidators {
         if (selectedEpochMillis > nowEpochMillis) return Invalid("Joining date cannot be in the future")
         return Valid
     }
+
+    fun validateResumeSize(fileSizeBytes: Long): ValidationResult =
+        if (fileSizeBytes > MAX_RESUME_SIZE_BYTES) Invalid("Resume must be 5 MB or smaller") else Valid
 }

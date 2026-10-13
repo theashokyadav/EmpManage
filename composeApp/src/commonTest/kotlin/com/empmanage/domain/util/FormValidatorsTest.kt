@@ -7,24 +7,24 @@ class FormValidatorsTest {
 
     @Test
     fun fullNameShorterThanThreeCharsIsInvalid() {
-        assertTrue(FormValidators.validateFullName("Al", emptySet()) is ValidationResult.Invalid)
+        assertTrue(FormValidators.validateFullName("Al") { false } is ValidationResult.Invalid)
     }
 
     @Test
     fun fullNameIsTrimmedBeforeLengthCheck() {
-        assertTrue(FormValidators.validateFullName("  Al  ", emptySet()) is ValidationResult.Invalid)
+        assertTrue(FormValidators.validateFullName("  Al  ") { false } is ValidationResult.Invalid)
     }
 
     @Test
     fun duplicateFullNameIsRejected() {
         val existing = setOf("john doe")
-        assertTrue(FormValidators.validateFullName("John Doe", existing) is ValidationResult.Invalid)
+        val result = FormValidators.validateFullName("John Doe") { it.trim().lowercase() in existing }
+        assertTrue(result is ValidationResult.Invalid)
     }
 
     @Test
-    fun editingSameEmployeeNameIsNotTreatedAsDuplicate() {
-        val existing = setOf("john doe")
-        val result = FormValidators.validateFullName("John Doe", existing, excluding = "John Doe")
+    fun nonDuplicateFullNamePasses() {
+        val result = FormValidators.validateFullName("John Doe") { false }
         assertTrue(result.isValid)
     }
 
@@ -61,6 +61,21 @@ class FormValidatorsTest {
     @Test
     fun skillsListMustHaveAtLeastOneEntry() {
         assertTrue(FormValidators.validateSkills(emptyList()).let { it is ValidationResult.Invalid })
+    }
+
+    @Test
+    fun nullGenderIsInvalid() {
+        assertTrue(FormValidators.validateGender(null) is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun nullDepartmentIsInvalid() {
+        assertTrue(FormValidators.validateDepartment(null) is ValidationResult.Invalid)
+    }
+
+    @Test
+    fun nullEmploymentTypeIsInvalid() {
+        assertTrue(FormValidators.validateEmploymentType(null) is ValidationResult.Invalid)
     }
 
     @Test

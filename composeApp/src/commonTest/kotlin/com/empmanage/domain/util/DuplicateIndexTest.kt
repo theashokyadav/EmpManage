@@ -49,6 +49,22 @@ class DuplicateIndexTest {
     }
 
     @Test
+    fun isEmailDuplicateOnlyChecksEmail() {
+        val index = DuplicateIndex()
+        index.add("jane@example.com", "9876543210")
+        assertTrue(index.isEmailDuplicate("jane@example.com"))
+        assertFalse(index.isEmailDuplicate("someone-else@example.com"))
+    }
+
+    @Test
+    fun isPhoneDuplicateOnlyChecksPhone() {
+        val index = DuplicateIndex()
+        index.add("jane@example.com", "9876543210")
+        assertTrue(index.isPhoneDuplicate("9876543210"))
+        assertFalse(index.isPhoneDuplicate("1112223333"))
+    }
+
+    @Test
     fun populateSeedsBothSetsFromExistingData() {
         val index = DuplicateIndex()
         index.populate(listOf("a@example.com", "b@example.com"), listOf("1111111111", "2222222222"))

@@ -1,5 +1,8 @@
 package com.empmanage.domain.util
 
+import com.empmanage.domain.model.Department
+import com.empmanage.domain.model.EmploymentType
+import com.empmanage.domain.model.Gender
 import com.empmanage.domain.model.Skill
 import com.empmanage.domain.util.ValidationResult.Invalid
 import com.empmanage.domain.util.ValidationResult.Valid
@@ -14,14 +17,15 @@ object FormValidators {
 
     private val EMAIL_REGEX = Regex("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
 
-    fun validateFullName(name: String, existingNames: Set<String>, excluding: String? = null): ValidationResult {
+    /**
+     * [isDuplicate] is supplied by the caller (typically backed by a
+     * [NameIndex]) so this validator stays decoupled from any particular
+     * collection/index implementation.
+     */
+    fun validateFullName(name: String, isDuplicate: (trimmedName: String) -> Boolean): ValidationResult {
         val trimmed = name.trim()
         if (trimmed.length < 3) return Invalid("Full name must be at least 3 characters")
-        val normalized = trimmed.lowercase()
-        val excludingNormalized = excluding?.trim()?.lowercase()
-        if (normalized != excludingNormalized && normalized in existingNames) {
-            return Invalid("An employee with this name already exists")
-        }
+        if (isDuplicate(trimmed)) return Invalid("An employee with this name already exists")
         return Valid
     }
 
@@ -51,6 +55,15 @@ object FormValidators {
         if (skills.isEmpty()) return Invalid("Select at least one skill")
         return Valid
     }
+
+    fun validateGender(gender: Gender?): ValidationResult =
+        if (gender == null) Invalid("Select a gender") else Valid
+
+    fun validateDepartment(department: Department?): ValidationResult =
+        if (department == null) Invalid("Select a department") else Valid
+
+    fun validateEmploymentType(employmentType: EmploymentType?): ValidationResult =
+        if (employmentType == null) Invalid("Select an employment type") else Valid
 
     fun validateSalary(rawSalary: String): ValidationResult {
         if (rawSalary.isBlank()) return Invalid("Salary is required")

@@ -23,7 +23,26 @@ class DuplicateIndex {
     }
 
     /**
-     * Checks for a duplicate email or normalised phone before persist.
+     * O(1) average — single HashSet `contains()` call. Used to attribute a
+     * duplicate error to the Email field specifically.
+     */
+    fun isEmailDuplicate(email: String, excludingEmail: String? = null): Boolean {
+        val normalizedEmail = email.lowercase()
+        val excluded = excludingEmail != null && normalizedEmail == excludingEmail.lowercase()
+        return !excluded && normalizedEmail in emailIndex
+    }
+
+    /**
+     * O(1) average — single HashSet `contains()` call. Used to attribute a
+     * duplicate error to the Phone field specifically.
+     */
+    fun isPhoneDuplicate(normalizedPhone: String, excludingPhone: String? = null): Boolean {
+        val excluded = excludingPhone != null && normalizedPhone == excludingPhone
+        return !excluded && normalizedPhone in phoneIndex
+    }
+
+    /**
+     * Checks for a duplicate email OR normalised phone before persist.
      * When editing an existing employee, pass its current [excludingEmail]
      * and [excludingPhone] so the record doesn't collide with itself.
      *
@@ -35,15 +54,7 @@ class DuplicateIndex {
         normalizedPhone: String,
         excludingEmail: String? = null,
         excludingPhone: String? = null
-    ): Boolean {
-        val normalizedEmail = email.lowercase()
-        val emailExcluded = excludingEmail != null && normalizedEmail == excludingEmail.lowercase()
-        val phoneExcluded = excludingPhone != null && normalizedPhone == excludingPhone
-
-        val emailIsDuplicate = !emailExcluded && normalizedEmail in emailIndex
-        val phoneIsDuplicate = !phoneExcluded && normalizedPhone in phoneIndex
-        return emailIsDuplicate || phoneIsDuplicate
-    }
+    ): Boolean = isEmailDuplicate(email, excludingEmail) || isPhoneDuplicate(normalizedPhone, excludingPhone)
 
     fun add(email: String, normalizedPhone: String) {
         emailIndex.add(email.lowercase())

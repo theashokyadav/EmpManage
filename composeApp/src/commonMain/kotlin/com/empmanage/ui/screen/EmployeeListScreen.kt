@@ -11,7 +11,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -60,6 +62,8 @@ fun EmployeeListScreen(
     onAddEmployee: () -> Unit,
     onEditEmployee: (Long) -> Unit,
     onViewDetails: (Long) -> Unit,
+    isDarkTheme: Boolean,
+    onToggleDarkTheme: () -> Unit,
     viewModel: EmployeeListViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -117,6 +121,12 @@ fun EmployeeListScreen(
             TopAppBar(
                 title = { Text("Employees") },
                 actions = {
+                    IconButton(onClick = onToggleDarkTheme) {
+                        Icon(
+                            if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = "Toggle dark mode"
+                        )
+                    }
                     BadgedBox(
                         badge = {
                             if (state.filters.activeCount > 0) {

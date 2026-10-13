@@ -14,11 +14,8 @@ package com.empmanage.platform
 
 import androidx.compose.runtime.Composable
 import kotlinx.cinterop.ExperimentalForeignApi
-import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
-import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSURL
-import platform.Foundation.NSUserDomainMask
 import platform.Foundation.lastPathComponent
 import platform.Foundation.writeToFile
 import platform.UIKit.UIApplication
@@ -37,10 +34,6 @@ import platform.darwin.NSObject
 @OptIn(ExperimentalForeignApi::class)
 private fun topViewController(): UIViewController? =
     UIApplication.sharedApplication.keyWindow?.rootViewController
-
-@OptIn(ExperimentalForeignApi::class)
-private fun documentsDirectory(): String =
-    NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true).first() as String
 
 @OptIn(ExperimentalForeignApi::class)
 private fun saveImageToAppStorage(image: UIImage): String? {

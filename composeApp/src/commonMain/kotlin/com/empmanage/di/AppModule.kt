@@ -1,11 +1,16 @@
 package com.empmanage.di
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.empmanage.data.local.datastore.createThemeDataStore
 import com.empmanage.data.local.db.AppDatabase
 import com.empmanage.data.local.db.EmployeeDao
 import com.empmanage.data.local.db.createDatabase
 import com.empmanage.data.repository.EmployeeRepositoryImpl
+import com.empmanage.data.repository.ThemePreferenceRepositoryImpl
 import com.empmanage.domain.model.Employee
 import com.empmanage.domain.repository.EmployeeRepository
+import com.empmanage.domain.repository.ThemePreferenceRepository
 import com.empmanage.domain.usecase.AddEmployeeUseCase
 import com.empmanage.domain.usecase.DeleteEmployeeUseCase
 import com.empmanage.domain.usecase.GetEmployeesUseCase
@@ -18,6 +23,7 @@ import com.empmanage.domain.util.UndoStack
 import com.empmanage.presentation.viewmodel.EmployeeDetailViewModel
 import com.empmanage.presentation.viewmodel.EmployeeFormViewModel
 import com.empmanage.presentation.viewmodel.EmployeeListViewModel
+import com.empmanage.presentation.viewmodel.ThemeViewModel
 import com.empmanage.presentation.viewmodel.TopEarnersViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModelOf
@@ -39,6 +45,8 @@ val dataModule: Module = module {
     single<AppDatabase> { createDatabase() }
     single<EmployeeDao> { get<AppDatabase>().employeeDao() }
     single<EmployeeRepository> { EmployeeRepositoryImpl(get()) }
+    single<DataStore<Preferences>> { createThemeDataStore() }
+    single<ThemePreferenceRepository> { ThemePreferenceRepositoryImpl(get()) }
 }
 
 val viewModelModule: Module = module {
@@ -46,6 +54,7 @@ val viewModelModule: Module = module {
     viewModelOf(::EmployeeListViewModel)
     viewModelOf(::EmployeeDetailViewModel)
     viewModelOf(::TopEarnersViewModel)
+    viewModelOf(::ThemeViewModel)
 }
 
 val commonModules = listOf(domainModule, dataModule, viewModelModule)

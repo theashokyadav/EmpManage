@@ -29,6 +29,8 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,6 +67,7 @@ fun EmployeeListScreen(
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var employeeToDelete by remember { mutableStateOf<Employee?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(viewModel) {
         viewModel.undoEvents.collect {
@@ -150,44 +153,63 @@ fun EmployeeListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddEmployee) {
-                Icon(Icons.Default.Add, contentDescription = "Add employee")
+            if (selectedTab == 0) {
+                FloatingActionButton(onClick = onAddEmployee) {
+                    Icon(Icons.Default.Add, contentDescription = "Add employee")
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            OutlinedTextField(
-                value = state.searchQuery,
-                onValueChange = viewModel::onSearchQueryChanged,
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                placeholder = { Text("Search by name, email, or department") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            )
-
-            if (state.isEmpty) {
-                EmptyState(
-                    message = if (state.searchQuery.isBlank() && state.filters.activeCount == 0) {
-                        "No employees yet. Tap + to add one."
-                    } else {
-                        "No employees match your search or filters."
-                    }
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("All Employees") }
                 )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Top Earners") }
+                )
+            }
+
+            if (selectedTab == 1) {
+                TopEarnersSection(modifier = Modifier.fillMaxSize())
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp)
-                ) {
-                    items(state.employees, key = { it.id }) { employee ->
-                        EmployeeCard(
-                            employee = employee,
-                            searchQuery = state.searchQuery,
-                            onEdit = { onEditEmployee(employee.id) },
-                            onDelete = { employeeToDelete = employee },
-                            onViewDetails = { onViewDetails(employee.id) },
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = viewModel::onSearchQueryChanged,
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    placeholder = { Text("Search by name, email, or department") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                )
+
+                if (state.isEmpty) {
+                    EmptyState(
+                        message = if (state.searchQuery.isBlank() && state.filters.activeCount == 0) {
+                            "No employees yet. Tap + to add one."
+                        } else {
+                            "No employees match your search or filters."
+                        }
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        items(state.employees, key = { it.id }) { employee ->
+                            EmployeeCard(
+                                employee = employee,
+                                searchQuery = state.searchQuery,
+                                onEdit = { onEditEmployee(employee.id) },
+                                onDelete = { employeeToDelete = employee },
+                                onViewDetails = { onViewDetails(employee.id) },
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }

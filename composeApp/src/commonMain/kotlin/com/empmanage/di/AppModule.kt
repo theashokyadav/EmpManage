@@ -18,6 +18,7 @@ import com.empmanage.domain.util.UndoStack
 import com.empmanage.presentation.viewmodel.EmployeeDetailViewModel
 import com.empmanage.presentation.viewmodel.EmployeeFormViewModel
 import com.empmanage.presentation.viewmodel.EmployeeListViewModel
+import com.empmanage.presentation.viewmodel.TopEarnersViewModel
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -44,6 +45,7 @@ val viewModelModule: Module = module {
     viewModelOf(::EmployeeFormViewModel)
     viewModelOf(::EmployeeListViewModel)
     viewModelOf(::EmployeeDetailViewModel)
+    viewModelOf(::TopEarnersViewModel)
 }
 
 val commonModules = listOf(domainModule, dataModule, viewModelModule)

@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.empmanage.platform.BackHandler
 import com.empmanage.presentation.navigation.Screen
 import com.empmanage.presentation.viewmodel.ThemeViewModel
 import com.empmanage.ui.screen.EmployeeDetailScreen
@@ -31,6 +32,10 @@ fun App() {
     EmpManageTheme(darkTheme = isDarkTheme) {
         Surface(modifier = Modifier.fillMaxSize()) {
             var screen by remember { mutableStateOf<Screen>(Screen.List) }
+
+            BackHandler(enabled = screen != Screen.List) {
+                screen = Screen.List
+            }
 
             // Shared element transition (bonus #5) between the list card's avatar
             // and the detail screen's avatar: both screens sit inside the same

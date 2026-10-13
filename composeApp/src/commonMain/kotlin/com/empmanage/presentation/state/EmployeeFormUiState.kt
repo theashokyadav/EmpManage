@@ -3,6 +3,7 @@ package com.empmanage.presentation.state
 import com.empmanage.domain.model.Department
 import com.empmanage.domain.model.EmploymentType
 import com.empmanage.domain.model.Gender
+import com.empmanage.domain.model.ResumeMetadata
 import com.empmanage.domain.model.Skill
 import com.empmanage.domain.util.FormValidators
 import com.empmanage.domain.util.ValidationResult
@@ -26,6 +27,7 @@ data class EmployeeFormUiState(
     val salary: FieldState<String> = FieldState("", error = errorMessageOf(FormValidators.validateSalary(""))),
     val profileImagePath: String? = null,
     val resumePath: String? = null,
+    val resumeMetadata: ResumeMetadata? = null,
     val isSaving: Boolean = false,
     val saveCompleted: Boolean = false
 ) {

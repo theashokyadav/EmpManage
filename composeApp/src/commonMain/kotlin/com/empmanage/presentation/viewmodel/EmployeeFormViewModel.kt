@@ -6,6 +6,7 @@ import com.empmanage.domain.model.Department
 import com.empmanage.domain.model.Employee
 import com.empmanage.domain.model.EmploymentType
 import com.empmanage.domain.model.Gender
+import com.empmanage.domain.model.ResumeMetadata
 import com.empmanage.domain.model.Skill
 import com.empmanage.domain.repository.EmployeeRepository
 import com.empmanage.domain.usecase.AddEmployeeUseCase
@@ -15,12 +16,16 @@ import com.empmanage.domain.util.FormValidators
 import com.empmanage.domain.util.NameIndex
 import com.empmanage.domain.util.PhoneNormalizer
 import com.empmanage.domain.util.ValidationResult
+import com.empmanage.platform.PickedDocument
 import com.empmanage.platform.currentTimeMillis
 import com.empmanage.presentation.state.EmployeeFormUiState
 import com.empmanage.presentation.state.FieldState
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,6 +39,9 @@ class EmployeeFormViewModel(
 
     private val _uiState = MutableStateFlow(EmployeeFormUiState())
     val uiState: StateFlow<EmployeeFormUiState> = _uiState.asStateFlow()
+
+    private val _snackbarEvents = Channel<String>(Channel.BUFFERED)
+    val snackbarEvents: Flow<String> = _snackbarEvents.receiveAsFlow()
 
     private var originalEmployee: Employee? = null
 
@@ -56,9 +64,36 @@ class EmployeeFormViewModel(
                 joiningDate = FieldState(employee.joiningDateMillis, error = null),
                 salary = FieldState(employee.salary.toString(), error = null),
                 profileImagePath = employee.profileImagePath,
-                resumePath = employee.resumePath
+                resumePath = employee.resumePath,
+                resumeMetadata = employee.resumeMetadata
             )
         }
+    }
+
+    fun onProfileImageSelected(filePath: String) {
+        _uiState.update { it.copy(profileImagePath = filePath) }
+    }
+
+    fun onProfileImagePickerPermissionDenied() {
+        viewModelScope.launch { _snackbarEvents.send("Permission denied — enable it in Settings to use this feature") }
+    }
+
+    fun onDocumentPicked(document: PickedDocument) {
+        val sizeError = FormValidators.validateResumeSize(document.fileSizeBytes)
+        if (sizeError is ValidationResult.Invalid) {
+            viewModelScope.launch { _snackbarEvents.send(sizeError.message) }
+            return
+        }
+        _uiState.update {
+            it.copy(
+                resumePath = document.filePath,
+                resumeMetadata = ResumeMetadata(document.fileName, document.fileSizeBytes, document.mimeType)
+            )
+        }
+    }
+
+    fun onResumeRemoved() {
+        _uiState.update { it.copy(resumePath = null, resumeMetadata = null) }
     }
 
     fun onFullNameChanged(value: String) {
@@ -181,7 +216,7 @@ class EmployeeFormViewModel(
                 salary = state.salary.value.toDouble(),
                 profileImagePath = state.profileImagePath,
                 resumePath = state.resumePath,
-                resumeMetadata = existing?.resumeMetadata,
+                resumeMetadata = state.resumeMetadata,
                 createdAt = existing?.createdAt ?: now,
                 updatedAt = now
             )

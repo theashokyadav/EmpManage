@@ -16,6 +16,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -23,6 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,11 +37,16 @@ import com.empmanage.domain.model.Department
 import com.empmanage.domain.model.EmploymentType
 import com.empmanage.domain.model.Gender
 import com.empmanage.domain.model.Skill
+import com.empmanage.platform.rememberCameraLauncher
+import com.empmanage.platform.rememberDocumentLauncher
+import com.empmanage.platform.rememberGalleryLauncher
 import com.empmanage.presentation.viewmodel.EmployeeFormViewModel
 import com.empmanage.ui.component.DatePickerField
 import com.empmanage.ui.component.DropdownField
+import com.empmanage.ui.component.ImageSourceBottomSheet
 import com.empmanage.ui.component.ProfileAvatar
 import com.empmanage.ui.component.RadioGroupField
+import com.empmanage.ui.component.ResumeUploadSection
 import com.empmanage.ui.component.SkillsSelector
 import com.empmanage.ui.component.ValidatedTextField
 import org.koin.compose.viewmodel.koinViewModel
@@ -53,6 +64,30 @@ fun EmployeeFormScreen(
     }
 
     val state by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showImageSourceSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.snackbarEvents.collect { message -> snackbarHostState.showSnackbar(message) }
+    }
+
+    val launchCamera = rememberCameraLauncher(
+        onImageCaptured = viewModel::onProfileImageSelected,
+        onPermissionDenied = viewModel::onProfileImagePickerPermissionDenied
+    )
+    val launchGallery = rememberGalleryLauncher(
+        onImageSelected = viewModel::onProfileImageSelected,
+        onPermissionDenied = viewModel::onProfileImagePickerPermissionDenied
+    )
+    val launchDocumentPicker = rememberDocumentLauncher(onDocumentPicked = viewModel::onDocumentPicked)
+
+    if (showImageSourceSheet) {
+        ImageSourceBottomSheet(
+            onTakePhoto = launchCamera,
+            onChooseFromGallery = launchGallery,
+            onDismiss = { showImageSourceSheet = false }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -64,6 +99,9 @@ fun EmployeeFormScreen(
                     }
                 }
             )
+        },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
         }
     ) { padding ->
         Column(
@@ -77,7 +115,7 @@ fun EmployeeFormScreen(
             ProfileAvatar(
                 imagePath = state.profileImagePath,
                 initials = state.fullName.value.trim().take(2).uppercase().ifBlank { "?" },
-                onClick = { /* wired in Phase 4: camera/gallery bottom sheet */ }
+                onClick = { showImageSourceSheet = true }
             )
 
             ValidatedTextField(
@@ -184,6 +222,12 @@ fun EmployeeFormScreen(
                 touched = state.salary.touched,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 leadingText = "$"
+            )
+
+            ResumeUploadSection(
+                resumeMetadata = state.resumeMetadata,
+                onUploadClick = launchDocumentPicker,
+                onRemoveClick = viewModel::onResumeRemoved
             )
 
             Button(

@@ -1,8 +1,10 @@
 package com.empmanage.ui.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -13,15 +15,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.empmanage.platform.decodeImageFile
 
 /**
  * 80dp circular avatar with a camera icon overlay, as specified for the
- * form header. [onClick] opens the camera/gallery bottom sheet — wired in
- * Phase 4; a no-op here just renders the placeholder.
+ * form header. [onClick] opens the camera/gallery bottom sheet.
  */
 @Composable
 fun ProfileAvatar(
@@ -30,6 +35,8 @@ fun ProfileAvatar(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val bitmap: ImageBitmap? = remember(imagePath) { imagePath?.let(::decodeImageFile) }
+
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(contentAlignment = Alignment.BottomEnd) {
             Box(
@@ -40,12 +47,20 @@ fun ProfileAvatar(
                     .clickable(onClick = onClick),
                 contentAlignment = Alignment.Center
             ) {
-                // imagePath rendering (AsyncImage/platform bitmap loader) is wired in Phase 4.
-                Text(
-                    text = initials,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = "Profile photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = initials,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
             Box(
                 modifier = Modifier

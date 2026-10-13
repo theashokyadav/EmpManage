@@ -35,13 +35,29 @@ interface EmployeeDao {
     @Query("SELECT fullName FROM employees")
     suspend fun getAllFullNames(): List<String>
 
-    /**
-     * Cursor-ready page fetch. Not currently called — the list screen pages
-     * the already filtered/sorted in-memory list instead (see
-     * EmployeeListViewModel) since search/filter already scan it fully via
-     * combine(). Kept as the seam for a future DB-level pagination path if
-     * the dataset ever grows large enough to need one.
-     */
-    @Query("SELECT * FROM employees ORDER BY createdAt DESC LIMIT :limit OFFSET :offset")
-    suspend fun getPage(limit: Int, offset: Int): List<EmployeeEntity>
+    @Query("SELECT COUNT(*) FROM employees")
+    fun observeCount(): Flow<Int>
+
+    // DB-level pagination (bonus #4): a growing LIMIT re-runs the query reactively
+    // as the Flow's collector asks for more (EmployeeListViewModel widens `limit`
+    // as the user scrolls). One @Query per sort order because Room/SQLite can't
+    // parameterize ORDER BY column/direction via a bind parameter.
+
+    @Query("SELECT * FROM employees ORDER BY fullName COLLATE NOCASE ASC LIMIT :limit")
+    fun observeLimitedByNameAsc(limit: Int): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees ORDER BY fullName COLLATE NOCASE DESC LIMIT :limit")
+    fun observeLimitedByNameDesc(limit: Int): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees ORDER BY joiningDateMillis DESC LIMIT :limit")
+    fun observeLimitedByJoiningNewest(limit: Int): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees ORDER BY joiningDateMillis ASC LIMIT :limit")
+    fun observeLimitedByJoiningOldest(limit: Int): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees ORDER BY salary DESC LIMIT :limit")
+    fun observeLimitedBySalaryHigh(limit: Int): Flow<List<EmployeeEntity>>
+
+    @Query("SELECT * FROM employees ORDER BY salary ASC LIMIT :limit")
+    fun observeLimitedBySalaryLow(limit: Int): Flow<List<EmployeeEntity>>
 }

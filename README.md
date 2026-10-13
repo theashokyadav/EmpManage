@@ -71,17 +71,23 @@ filter, sort, pagination) happens in `EmployeeListViewModel` via `combine()`
 on top of `GetEmployeesUseCase()`'s `Flow` — Composables only render the
 resulting `EmployeeListUiState`.
 
-### Why pagination is client-side, not a DB cursor
+### How pagination actually works
 
-The list screen's search/filter/sort already scans the full in-memory
-employee list reactively via `combine()` (simple substring search across
-three columns, AND-composed filters). Re-deriving that same logic as SQL
-`WHERE`/`LIMIT`/`OFFSET` would either duplicate it or require abandoning the
-reactive pipeline for a request-driven one. Instead, `EmployeeListViewModel`
-pages the already-filtered/sorted list in windows of 20 (`visibleCountState`),
-resetting to one page whenever search/filter/sort changes. `EmployeeDao` does
-still expose a cursor-ready `getPage(limit, offset)` query for a future
-DB-level pagination path if the dataset ever grows large enough to need one.
+`EmployeeListViewModel` pages at the DAO level: `ObserveEmployeePageUseCase`
+calls one of `EmployeeDao`'s six `ORDER BY ... LIMIT :limit` queries (one per
+`SortOption`, since Room/SQLite can't parameterize `ORDER BY` via a bind
+parameter), and widens `limit` by 20 (`visibleCountState`) as the user
+scrolls or taps "load more" — a real re-query every time, driven by
+`flatMapLatest`, not a client-side slice of an already-fetched list.
+`observeCount()` tracks the true total row count so `hasMore` reflects the
+DB, not just what's in memory.
+
+Search and department/status/employment-type filtering are still applied
+client-side on top of that loaded window, because Section 4's search needs
+to scan the *whole* matching set to be correct, and SQLite can't easily
+combine a dynamic multi-column substring search with multi-value filters in
+one static `@Query`. Changing search/filter/sort resets the window back to
+one page (20) rather than pretending the old page count still matches.
 
 ## Tech stack
 

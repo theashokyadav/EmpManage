@@ -14,6 +14,8 @@ import com.empmanage.domain.repository.ThemePreferenceRepository
 import com.empmanage.domain.usecase.AddEmployeeUseCase
 import com.empmanage.domain.usecase.DeleteEmployeeUseCase
 import com.empmanage.domain.usecase.GetEmployeesUseCase
+import com.empmanage.domain.usecase.ObserveEmployeeCountUseCase
+import com.empmanage.domain.usecase.ObserveEmployeePageUseCase
 import com.empmanage.domain.usecase.TopNSalaryUseCase
 import com.empmanage.domain.usecase.UndoDeleteUseCase
 import com.empmanage.domain.usecase.UpdateEmployeeUseCase
@@ -38,6 +40,8 @@ val domainModule: Module = module {
     single { DeleteEmployeeUseCase(get(), get(), get(), get()) }
     single { UndoDeleteUseCase(get(), get()) }
     single { GetEmployeesUseCase(get()) }
+    single { ObserveEmployeePageUseCase(get()) }
+    single { ObserveEmployeeCountUseCase(get()) }
     single { TopNSalaryUseCase() }
 }
 

@@ -54,7 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.empmanage.domain.model.Employee
-import com.empmanage.presentation.state.SortOption
+import com.empmanage.domain.model.SortOption
 import com.empmanage.presentation.viewmodel.EmployeeListViewModel
 import com.empmanage.ui.component.EmployeeCard
 import com.empmanage.ui.component.EmptyState

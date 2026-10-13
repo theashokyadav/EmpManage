@@ -1,11 +1,13 @@
 package com.empmanage.presentation.state
 
 import com.empmanage.domain.model.Employee
+import com.empmanage.domain.model.SortOption
 
 data class EmployeeListUiState(
     val searchQuery: String = "",
     val employees: List<Employee> = emptyList(),
-    val totalMatchCount: Int = 0,
+    val loadedCount: Int = 0,
+    val totalCount: Int = 0,
     val hasMore: Boolean = false,
     val isLoading: Boolean = true,
     val filters: FilterState = FilterState(),

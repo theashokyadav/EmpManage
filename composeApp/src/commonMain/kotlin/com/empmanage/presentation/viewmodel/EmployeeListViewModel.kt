@@ -5,15 +5,18 @@ import androidx.lifecycle.viewModelScope
 import com.empmanage.domain.model.Department
 import com.empmanage.domain.model.Employee
 import com.empmanage.domain.model.EmploymentType
+import com.empmanage.domain.model.SortOption
 import com.empmanage.domain.usecase.DeleteEmployeeUseCase
 import com.empmanage.domain.usecase.GetEmployeesUseCase
+import com.empmanage.domain.usecase.ObserveEmployeeCountUseCase
+import com.empmanage.domain.usecase.ObserveEmployeePageUseCase
 import com.empmanage.domain.usecase.UndoDeleteUseCase
 import com.empmanage.domain.util.DuplicateIndex
 import com.empmanage.domain.util.NameIndex
 import com.empmanage.presentation.state.ActiveStatusFilter
 import com.empmanage.presentation.state.EmployeeListUiState
 import com.empmanage.presentation.state.FilterState
-import com.empmanage.presentation.state.SortOption
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -32,13 +36,24 @@ import kotlinx.coroutines.launch
 private const val PAGE_SIZE = 20
 
 /**
- * Owns every list transformation (search, filter, sort) so the Composable
- * only ever renders [uiState] as-is. [combine] reactively recomputes the
- * visible list whenever the employees Flow, the debounced search query,
- * the filter selection, or the sort option changes.
+ * Owns every list transformation (search, filter, sort, pagination) so the
+ * Composable only ever renders [uiState] as-is.
+ *
+ * Pagination (bonus #4) is genuinely DB-level: [pagedEmployees] re-queries
+ * [ObserveEmployeePageUseCase] — one of [com.empmanage.data.local.db.EmployeeDao]'s
+ * `ORDER BY ... LIMIT :limit` queries — every time [sortOptionState] or
+ * [visibleCountState] changes, via `flatMapLatest`. Search and filter are
+ * still applied client-side on top of that loaded window: Section 4's
+ * search/filter requirement needs to scan the *whole* dataset to be
+ * correct, so [onSearchQueryChanged]/filter changes reset the window back
+ * to one page rather than trying to search only what's currently loaded —
+ * the same page-growth mechanism used for plain scrolling just also kicks
+ * in naturally as more of the sorted data loads in.
  */
 class EmployeeListViewModel(
     private val getEmployeesUseCase: GetEmployeesUseCase,
+    private val observeEmployeePageUseCase: ObserveEmployeePageUseCase,
+    private val observeEmployeeCountUseCase: ObserveEmployeeCountUseCase,
     private val deleteEmployeeUseCase: DeleteEmployeeUseCase,
     private val undoDeleteUseCase: UndoDeleteUseCase,
     private val duplicateIndex: DuplicateIndex,
@@ -67,42 +82,61 @@ class EmployeeListViewModel(
     private val debouncedQuery = searchQueryState.debounce(300).distinctUntilChanged()
 
     init {
-        // A fresh search/filter/sort makes the previous page count meaningless —
-        // start back at one page so pagination doesn't show a stale "has more".
+        // A fresh search/filter makes the previous page window meaningless for finding
+        // matches — start back at one page so pagination doesn't show a stale "has more".
         viewModelScope.launch {
-            combine(debouncedQuery, filterState, sortOptionState) { _, _, _ -> Unit }
+            combine(debouncedQuery, filterState) { _, _ -> Unit }
                 .collect { visibleCountState.value = PAGE_SIZE }
+        }
+        // Changing sort switches to a different DAO query entirely; also restart at page one.
+        viewModelScope.launch {
+            sortOptionState.collect { visibleCountState.value = PAGE_SIZE }
         }
     }
 
-    private val filteredAndSorted: Flow<List<Employee>> = combine(
-        getEmployeesUseCase(),
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val pagedEmployees: Flow<List<Employee>> = combine(sortOptionState, visibleCountState) { sort, limit ->
+        sort to limit
+    }.flatMapLatest { (sort, limit) -> observeEmployeePageUseCase(sort, limit) }
+
+    private val totalCount: Flow<Int> = observeEmployeeCountUseCase()
+
+    // Collects pagedEmployees exactly once — referencing a flatMapLatest-backed Flow from
+    // two separate combine() calls would re-subscribe (and re-query the DB) independently.
+    private data class PageSnapshot(val filtered: List<Employee>, val loadedCount: Int, val totalCount: Int)
+
+    private val pageSnapshot: Flow<PageSnapshot> = combine(
+        pagedEmployees,
         debouncedQuery,
         filterState,
-        sortOptionState
-    ) { employees, query, filters, sort ->
-        applySort(employees.filter { matchesSearch(it, query) && matchesFilters(it, filters) }, sort)
+        totalCount
+    ) { employees, query, filters, total ->
+        PageSnapshot(
+            filtered = employees.filter { matchesSearch(it, query) && matchesFilters(it, filters) },
+            loadedCount = employees.size,
+            totalCount = total
+        )
     }
 
     val uiState: StateFlow<EmployeeListUiState> = combine(
-        filteredAndSorted,
+        pageSnapshot,
         searchQueryState,
         filterState,
-        sortOptionState,
-        visibleCountState
-    ) { employees, rawQuery, filters, sort, visibleCount ->
+        sortOptionState
+    ) { snapshot, rawQuery, filters, sort ->
         EmployeeListUiState(
             searchQuery = rawQuery,
-            employees = employees.take(visibleCount),
-            totalMatchCount = employees.size,
-            hasMore = employees.size > visibleCount,
+            employees = snapshot.filtered,
+            loadedCount = snapshot.loadedCount,
+            totalCount = snapshot.totalCount,
+            hasMore = snapshot.loadedCount < snapshot.totalCount,
             isLoading = false,
             filters = filters,
             sortOption = sort
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), EmployeeListUiState())
 
-    /** Loads the next page of 20 (bonus #4) by widening the visible window over the already filtered/sorted list. */
+    /** Widens the DB query's LIMIT by one page of 20 (bonus #4) — a real re-query, not a client-side slice. */
     fun onLoadMore() {
         visibleCountState.update { it + PAGE_SIZE }
     }
@@ -169,14 +203,5 @@ class EmployeeListViewModel(
         }
         val employmentTypeMatch = filters.employmentTypes.isEmpty() || employee.employmentType in filters.employmentTypes
         return departmentMatch && statusMatch && employmentTypeMatch
-    }
-
-    private fun applySort(employees: List<Employee>, sort: SortOption): List<Employee> = when (sort) {
-        SortOption.NAME_ASC -> employees.sortedBy { it.fullName.lowercase() }
-        SortOption.NAME_DESC -> employees.sortedByDescending { it.fullName.lowercase() }
-        SortOption.JOINING_NEWEST -> employees.sortedByDescending { it.joiningDateMillis }
-        SortOption.JOINING_OLDEST -> employees.sortedBy { it.joiningDateMillis }
-        SortOption.SALARY_HIGH -> employees.sortedByDescending { it.salary }
-        SortOption.SALARY_LOW -> employees.sortedBy { it.salary }
     }
 }

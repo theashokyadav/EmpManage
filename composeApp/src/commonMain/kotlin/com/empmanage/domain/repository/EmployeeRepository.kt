@@ -1,6 +1,7 @@
 package com.empmanage.domain.repository
 
 import com.empmanage.domain.model.Employee
+import com.empmanage.domain.model.SortOption
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -9,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
  */
 interface EmployeeRepository {
     fun observeAll(): Flow<List<Employee>>
+    fun observeLimited(sort: SortOption, limit: Int): Flow<List<Employee>>
+    fun observeCount(): Flow<Int>
     suspend fun getById(id: Long): Employee?
     suspend fun add(employee: Employee): Long
     suspend fun update(employee: Employee)

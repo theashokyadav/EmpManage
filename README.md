@@ -128,3 +128,12 @@ field validator, and small UI-adjacent helpers (ordinal formatting):
 ```
 ./gradlew :composeApp:testDebugUnitTest
 ```
+
+## Development notes
+
+This project was built with Claude Code as a pair-programming tool —
+accelerating boilerplate, surfacing edge cases, and speeding up iteration.
+All architecture decisions (Clean Architecture layering, the DSA choices in
+`domain/util`, the DAO-level pagination design), debugging, and review were
+done by me
+
